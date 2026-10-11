@@ -2,6 +2,9 @@
 import SwiftUI
 
 /// Page-local position; native scrolling does not invalidate SwiftUI.
+/// Keep this object stable for one reading page's lifetime. The offset restores
+/// the initial viewport and records scrolling; it is not a live scroll command.
+/// Give `TextView` a new identity when switching to another page's position.
 @MainActor
 public final class RichTextScrollPosition {
     public var offset: CGPoint = .zero

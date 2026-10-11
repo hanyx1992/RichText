@@ -116,6 +116,7 @@ struct _TextView_UIKit: UIViewRepresentable {
 
         func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
             textView?.finishNativeScrollRestoration()
+            textView?.prepareNativeScrollLayout(in: CGRect(origin: .zero, size: scrollView.bounds.size))
             return true
         }
 
@@ -142,6 +143,7 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ uiView: InlineAttachmentTextView, coordinator: Coordinator) {
+        uiView.isDismantled = true
         uiView.saveNativeScrollPosition()
         uiView.delegate = nil
         uiView.textDragDelegate = nil

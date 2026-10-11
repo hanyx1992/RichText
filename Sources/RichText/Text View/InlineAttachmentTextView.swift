@@ -16,6 +16,7 @@ final class InlineAttachmentTextView: PlatformTextView {
     // TextKit may normalize storage attributes; compare subsequent submissions to our input.
     private var lastAppliedAttributedString: NSAttributedString?
     #if canImport(UIKit)
+    var isDismantled = false
     var cachedFittingSize: (proposal: CGSize, containerSize: CGSize, boundsWidth: CGFloat, size: CGSize)?
     var textLayoutRevision: UInt = 0
     var nativeScrollViewport: RichTextNativeScrollViewport?

@@ -45,7 +45,10 @@ final class InlineHostingAttachmentViewProvider: NSTextAttachmentViewProvider {
         // link hosting attachment with the parent text view for size-driven view invalidation.
         let attachmentHostingTextView = richTextParentView as? InlineAttachmentTextView
         MainActor.assumeIsolated {
-            attachment.attachmentsHostingTextView = attachmentHostingTextView
+            // UIKit may provide an internal TextKit container rather than the owning text view.
+            if let attachmentHostingTextView {
+                attachment.attachmentsHostingTextView = attachmentHostingTextView
+            }
         }
         
         let hostingView = MainActor.assumeIsolated {

@@ -33,7 +33,11 @@ final public class InlineHostingAttachment: NSTextAttachment {
     weak var attachmentsHostingTextView: InlineAttachmentTextView? {
         didSet {
             #if canImport(UIKit)
-            if oldValue !== attachmentsHostingTextView { updateHostingSafeArea() }
+            if oldValue !== attachmentsHostingTextView {
+                // A reused attachment must not carry the previous viewport's hidden state.
+                hostingController?.view.isHidden = false
+                updateHostingSafeArea()
+            }
             #endif
         }
     }

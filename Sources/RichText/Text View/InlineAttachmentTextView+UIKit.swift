@@ -49,6 +49,8 @@ extension InlineAttachmentTextView {
     }
     
     override func layoutSubviews() {
+        // A dismantled view no longer owns hosts that may have moved to a new text view.
+        guard !isDismantled else { return }
         layoutNativeScrollHeader()
         super.layoutSubviews()
         if nativeScrollViewport == nil { invalidateIntrinsicContentSize() }
@@ -59,6 +61,22 @@ extension InlineAttachmentTextView {
 
     override var intrinsicContentSize: CGSize {
         CGSize(width: PlatformView.noIntrinsicMetric, height: PlatformView.noIntrinsicMetric)
+    }
+
+    override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
+        finishNativeScrollRestoration()
+        prepareNativeScrollLayout(in: rect)
+        super.scrollRectToVisible(rect, animated: animated)
+    }
+
+    override func scrollRangeToVisible(_ range: NSRange) {
+        finishNativeScrollRestoration()
+        if nativeScrollViewport != nil, !isDismantled,
+           range.location >= 0, range.location <= textStorage.length,
+           range.length >= 0, range.length <= textStorage.length - range.location {
+            layoutManager.ensureLayout(forCharacterRange: range)
+        }
+        super.scrollRangeToVisible(range)
     }
 
     override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {

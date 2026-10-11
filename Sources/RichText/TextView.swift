@@ -81,6 +81,8 @@ public struct TextView: View {
         _TextView_AppKit(content: content)
         #elseif canImport(UIKit)
         _TextView_UIKit(content: content, nativeScrollViewport: nativeScrollViewport)
+            // Switching scroll modes starts a new native view and coordinator.
+            .id(nativeScrollViewport != nil)
             .environment(\.richTextNativeScrollViewport, nil)
         #else
         ContentUnavailableView(

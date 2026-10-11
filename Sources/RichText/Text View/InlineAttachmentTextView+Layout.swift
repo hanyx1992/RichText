@@ -17,6 +17,9 @@ extension InlineAttachmentTextView {
     }
     
     func invalidateTextLayout(at range: NSRange) {
+        #if canImport(UIKit)
+        guard !isDismantled else { return }
+        #endif
         if let textLayoutManager,
            let textContentManager = textLayoutManager.textContentManager,
            let textRange = NSTextRange(

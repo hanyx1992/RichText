@@ -86,6 +86,18 @@ extension InlineAttachmentTextView {
         saveNativeScrollPosition()
     }
 
+    func prepareNativeScrollLayout(in rect: CGRect) {
+        guard nativeScrollViewport != nil, !isDismantled, !rect.isNull,
+              rect.minY.isFinite, rect.height.isFinite,
+              textContainer.size.width.isFinite, textContainer.size.width > 0,
+              bounds.height.isFinite, bounds.height > 0 else { return }
+        // Header targets map to the first text viewport, including its attachments.
+        let target = CGRect(x: 0, y: max(0, rect.minY - textContainerOffset.y),
+                            width: textContainer.size.width,
+                            height: max(bounds.height, rect.height))
+        layoutManager.ensureLayout(forBoundingRect: target, in: textContainer)
+    }
+
     func saveNativeScrollPosition() {
         guard pendingViewportOffset == nil else { return }
         nativeScrollViewport?.position.offset = contentOffset

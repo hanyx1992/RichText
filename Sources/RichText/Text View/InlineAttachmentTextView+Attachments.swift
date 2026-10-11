@@ -76,9 +76,7 @@ extension InlineAttachmentTextView {
             inlineAttachmentsByID[attachment.id] = attachment
             inlineAttachmentRangesByID[attachment.id] = range
             #if canImport(UIKit)
-            if nativeScrollViewport != nil {
-                MainActor.assumeIsolated { attachment.attachmentsHostingTextView = self }
-            }
+            MainActor.assumeIsolated { attachment.attachmentsHostingTextView = self }
             #endif
         }
     }
