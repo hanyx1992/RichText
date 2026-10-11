@@ -19,14 +19,19 @@ public struct RichTextNativeScrollViewport {
     var padding: CGFloat
     var headerSpacing: CGFloat
     var position: RichTextScrollPosition
+    var safeAreaInsets: EdgeInsets
 
+    /// Vertical safe-area insets when the viewport extends behind system chrome.
+    /// The caller continues to constrain the viewport to the horizontal safe area.
     public init(header: some View, columnWidth: CGFloat, padding: CGFloat,
-                headerSpacing: CGFloat, position: RichTextScrollPosition) {
+                headerSpacing: CGFloat, position: RichTextScrollPosition,
+                safeAreaInsets: EdgeInsets = EdgeInsets()) {
         self.header = AnyView(header)
         self.columnWidth = columnWidth
         self.padding = padding
         self.headerSpacing = headerSpacing
         self.position = position
+        self.safeAreaInsets = safeAreaInsets
     }
 }
 

@@ -30,7 +30,13 @@ final public class InlineHostingAttachment: NSTextAttachment {
     @MainActor
     private var isTextLayoutInvalidationScheduled = false
     @MainActor
-    weak var attachmentsHostingTextView: InlineAttachmentTextView?
+    weak var attachmentsHostingTextView: InlineAttachmentTextView? {
+        didSet {
+            #if canImport(UIKit)
+            if oldValue !== attachmentsHostingTextView { updateHostingSafeArea() }
+            #endif
+        }
+    }
     
     /// The identity of the view.
     ///
@@ -177,11 +183,22 @@ final public class InlineHostingAttachment: NSTextAttachment {
         return hostingController.view
         #elseif canImport(UIKit)
         let hostingController = UIHostingController(rootView: hostingRootView)
-        hostingController.view.backgroundColor = .clear
         self.hostingController = hostingController
+        updateHostingSafeArea()
+        hostingController.view.backgroundColor = .clear
         return hostingController.view!
         #endif
     }()
+
+    #if canImport(UIKit)
+    @MainActor
+    private func updateHostingSafeArea() {
+        if #available(iOS 16.4, *) {
+            // Native viewport attachments use TextKit geometry across system safe areas.
+            hostingController?.safeAreaRegions = attachmentsHostingTextView?.nativeScrollViewport == nil ? .all : []
+        }
+    }
+    #endif
 
     @MainActor
     func updateContent(from attachment: InlineHostingAttachment) -> Bool {

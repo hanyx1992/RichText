@@ -7,11 +7,19 @@ extension InlineAttachmentTextView {
         isScrollEnabled = viewport != nil
         guard let viewport else { return }
 
-        // The SwiftUI geometry already excludes the system safe area.
+        // The caller supplies any vertical safe area included in the viewport.
+        // Keep it in text geometry so the page-local offset still begins at zero.
         contentInsetAdjustmentBehavior = .never
+        automaticallyAdjustsScrollIndicatorInsets = false
+        verticalScrollIndicatorInsets = UIEdgeInsets(top: viewport.safeAreaInsets.top, left: 0,
+                                                     bottom: viewport.safeAreaInsets.bottom, right: 0)
         clipsToBounds = true
         if viewportHeader == nil {
             viewportHeader = UIHostingController(rootView: AnyView(EmptyView()))
+            if #available(iOS 16.4, *) {
+                // Header geometry belongs to the text container, including when offscreen.
+                viewportHeader?.safeAreaRegions = []
+            }
             viewportHeader?.view.backgroundColor = .clear
             if let view = viewportHeader?.view { addSubview(view) }
             pendingViewportOffset = viewport.position.offset
@@ -45,9 +53,11 @@ extension InlineAttachmentTextView {
             height = header.view.frame.height
         }
         let side = max(0, (bounds.width - width) / 2)
-        header.view.frame = CGRect(x: side, y: viewport.padding, width: width, height: height)
-        let inset = UIEdgeInsets(top: viewport.padding + height + viewport.headerSpacing,
-                                 left: side, bottom: viewport.padding, right: side)
+        let top = viewport.safeAreaInsets.top + viewport.padding
+        header.view.frame = CGRect(x: side, y: top, width: width, height: height)
+        let inset = UIEdgeInsets(top: top + height + viewport.headerSpacing,
+                                 left: side, bottom: viewport.padding + viewport.safeAreaInsets.bottom,
+                                 right: side)
         if textContainerInset != inset {
             textContainerInset = inset
             _invalidateTextLayout()
