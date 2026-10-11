@@ -13,6 +13,26 @@ final class InlineAttachmentTextView: PlatformTextView {
     var inlineAttachmentRangesByID: [AnyHashable: NSRange] = [:]
     var cachedContentHeight: CGFloat?
     var cachedContentHeightWidth: CGFloat?
+    // TextKit may normalize storage attributes; compare subsequent submissions to our input.
+    private var lastAppliedAttributedString: NSAttributedString?
+    #if canImport(UIKit)
+    var cachedFittingSize: (proposal: CGSize, containerSize: CGSize, boundsWidth: CGFloat, size: CGSize)?
+    var textLayoutRevision: UInt = 0
+    var nativeScrollViewport: RichTextNativeScrollViewport?
+    var viewportAttachmentIDs: [ObjectIdentifier: AnyHashable] = [:]
+    var viewportHeader: UIHostingController<AnyView>?
+    var viewportHeaderSize: CGSize = .zero
+    var viewportHeaderNeedsMeasurement = true
+    var viewportHeaderWidth: CGFloat?
+    var pendingViewportOffset: CGPoint?
+    override var contentSize: CGSize {
+        didSet {
+            if oldValue != contentSize, nativeScrollViewport != nil, pendingViewportOffset != nil {
+                setNeedsLayout()
+            }
+        }
+    }
+    #endif
     
     func replaceAttachmentWithEquivalentText(
         in attributedString: NSAttributedString
@@ -46,7 +66,8 @@ final class InlineAttachmentTextView: PlatformTextView {
         return mutable
     }
     
-    func applyAttributedStringPreservingAttachments(_ attributedString: AttributedString) {
+    @discardableResult
+    func applyAttributedStringPreservingAttachments(_ attributedString: AttributedString) -> Bool {
         var mergedAttributedString = attributedString
         var changedAttachments: [InlineHostingAttachment] = []
         
@@ -73,7 +94,7 @@ final class InlineAttachmentTextView: PlatformTextView {
             )
         }
         
-        setAttributedString(
+        return setAttributedString(
             mergedAttributedString,
             invalidating: changedAttachments
         )
@@ -82,7 +103,7 @@ final class InlineAttachmentTextView: PlatformTextView {
     private func setAttributedString(
         _ attributedString: AttributedString,
         invalidating changedAttachments: [InlineHostingAttachment] = []
-    ) {
+    ) -> Bool {
         do {
             let attributed = try NSMutableAttributedString(
                 attributedString: attributedString.nsAttributedString
@@ -92,30 +113,29 @@ final class InlineAttachmentTextView: PlatformTextView {
             attributed._fixForgroundColorIfNecessary(in: range)
             attributed._fixFont(self.font, in: range)
             
-            if storageAttributedStringMatches(attributed) {
+            if submittedAttributedStringMatches(attributed) {
                 refreshInlineAttachmentIndex()
                 changedAttachments.forEach { attachment in
                     invalidateTextLayout(for: attachment)
                 }
-                return
+                return true
             }
             
+            lastAppliedAttributedString = NSAttributedString(attributedString: attributed)
             updateStorageContents(with: attributed)
             refreshInlineAttachmentIndex()
             
             _invalidateTextLayout()
+            return true
         } catch {
             // TODO: use logger.
             print("Failed to build attributed string: \(error)")
+            return false
         }
     }
     
-    private func storageAttributedStringMatches(_ attributedString: NSAttributedString) -> Bool {
-        guard let storageAttributedString else {
-            return false
-        }
-        
-        return storageAttributedString.isEqual(to: attributedString)
+    private func submittedAttributedStringMatches(_ attributedString: NSAttributedString) -> Bool {
+        lastAppliedAttributedString?.isEqual(to: attributedString) ?? false
     }
 }
 

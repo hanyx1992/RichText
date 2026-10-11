@@ -25,15 +25,45 @@ extension InlineAttachmentTextView {
             y: textContainerInset.top
         )
     }
+
+    func measuredSizeThatFits(_ proposal: CGSize) -> CGSize {
+        if let cachedFittingSize,
+           cachedFittingSize.proposal == proposal,
+           cachedFittingSize.containerSize == textContainer.size,
+           cachedFittingSize.boundsWidth == bounds.width {
+            return cachedFittingSize.size
+        }
+
+        let revision = textLayoutRevision
+        let size = sizeThatFits(proposal)
+        // A synchronous attachment update during measurement must not be cached.
+        if revision == textLayoutRevision {
+            cachedFittingSize = (proposal, textContainer.size, bounds.width, size)
+        }
+        return size
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection != traitCollection { _invalidateTextLayout() }
+    }
     
     override func layoutSubviews() {
+        layoutNativeScrollHeader()
         super.layoutSubviews()
-        invalidateIntrinsicContentSize()
+        if nativeScrollViewport == nil { invalidateIntrinsicContentSize() }
+        restoreNativeScrollPositionIfNeeded()
         updateInlineAttachmentViews()
+        if let header = viewportHeader?.view { bringSubviewToFront(header) }
     }
 
     override var intrinsicContentSize: CGSize {
         CGSize(width: PlatformView.noIntrinsicMetric, height: PlatformView.noIntrinsicMetric)
+    }
+
+    override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
+        finishNativeScrollRestoration()
+        return super.accessibilityScroll(direction)
     }
     
     override func attributedText(in range: UITextRange) -> NSAttributedString {

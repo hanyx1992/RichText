@@ -26,5 +26,9 @@ let package = Package(
         .target(
             name: "Introspection"
         ),
+        .testTarget(
+            name: "RichTextTests",
+            dependencies: ["RichText"]
+        ),
     ]
 )

@@ -10,12 +10,13 @@ import SwiftUI
 
 struct _TextView_UIKit: UIViewRepresentable {
     var content: TextContent
+    var nativeScrollViewport: RichTextNativeScrollViewport?
     
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     func makeUIView(context: Context) -> InlineAttachmentTextView {
         let textView = InlineAttachmentTextView(
-            usingTextLayoutManager: context.environment.usesTextLayoutManager
+            usingTextLayoutManager: nativeScrollViewport == nil && context.environment.usesTextLayoutManager
         )
         textView.backgroundColor = .clear
         textView.delegate = context.coordinator
@@ -29,21 +30,44 @@ struct _TextView_UIKit: UIViewRepresentable {
         textView.textContainer.lineFragmentPadding = .zero
         textView.textContainerInset = .zero
         textView.contentInset = .zero
+        textView.updateNativeScrollViewport(nativeScrollViewport)
         
         return textView
     }
     
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
+        let position = textView.pendingViewportOffset ?? textView.contentOffset
         context.coordinator.parent = self
+        textView.updateNativeScrollViewport(nativeScrollViewport)
+        if nativeScrollViewport != nil {
+            textView.isScrollEnabled = context.environment.isEnabled
+            textView.isUserInteractionEnabled = context.environment.isEnabled
+        }
 
         let configuration = TextViewRenderConfiguration(context: context)
         TextAttributeConverter.mergeRenderConfigurationIntoTextView(
             textView,
             configuration: configuration
         )
-        textView.applyAttributedStringPreservingAttachments(
-            content.attributedString(configuration: configuration)
-        )
+        let coordinator = context.coordinator
+        if let version = nativeScrollViewport?.contentVersion,
+           coordinator.contentVersion == version,
+           coordinator.renderConfiguration == configuration,
+           coordinator.isEnabled == context.environment.isEnabled {
+            return
+        }
+        if nativeScrollViewport != nil, textView.textStorage.length > 0,
+           !textView.isTracking, !textView.isDragging, !textView.isDecelerating {
+            textView.pendingViewportOffset = position
+        }
+        if textView.applyAttributedStringPreservingAttachments(
+            content.attributedString(configuration: configuration,
+                                     reuseConvertedAttributes: nativeScrollViewport != nil)
+        ) {
+            coordinator.contentVersion = nativeScrollViewport?.contentVersion
+            coordinator.renderConfiguration = configuration
+            coordinator.isEnabled = context.environment.isEnabled
+        }
     }
     
     // For UITextView, it comes with a UIScrollView
@@ -56,7 +80,11 @@ struct _TextView_UIKit: UIViewRepresentable {
         uiView: InlineAttachmentTextView,
         context: Context
     ) -> CGSize? {
-        uiView.sizeThatFits(
+        if nativeScrollViewport != nil {
+            return CGSize(width: proposal.width ?? uiView.bounds.width,
+                          height: proposal.height ?? uiView.bounds.height)
+        }
+        return uiView.measuredSizeThatFits(
             proposal.replacingUnspecifiedDimensions(
                 by: CGSize(
                     width: UIView.noIntrinsicMetric,
@@ -70,9 +98,31 @@ struct _TextView_UIKit: UIViewRepresentable {
         var parent: _TextView_UIKit
         weak var textView: InlineAttachmentTextView?
         var editMenuInteraction: UIEditMenuInteraction?
+        var contentVersion: AnyHashable?
+        var renderConfiguration: TextViewRenderConfiguration?
+        var isEnabled: Bool?
         
         init(_ parent: _TextView_UIKit) {
             self.parent = parent
+        }
+
+        func scrollViewDidScroll(_ scrollView: UIScrollView) {
+            textView?.saveNativeScrollPosition()
+        }
+
+        func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            textView?.finishNativeScrollRestoration()
+        }
+
+        func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
+            textView?.finishNativeScrollRestoration()
+            return true
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            if textView.selectedRange.length > 0 {
+                self.textView?.finishNativeScrollRestoration()
+            }
         }
         
         func textDraggableView(
@@ -89,6 +139,14 @@ struct _TextView_UIKit: UIViewRepresentable {
                 return dragRequest.suggestedItems
             }
         }
+    }
+
+    static func dismantleUIView(_ uiView: InlineAttachmentTextView, coordinator: Coordinator) {
+        uiView.saveNativeScrollPosition()
+        uiView.delegate = nil
+        uiView.textDragDelegate = nil
+        uiView.viewportHeader?.view.removeFromSuperview()
+        uiView.viewportHeader = nil
     }
 }
 

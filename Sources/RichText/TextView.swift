@@ -65,6 +65,9 @@ public struct TextView: View {
     public var content: TextContent
     
     @Environment(\.fontResolutionContext) private var fontResolutionContext
+    #if canImport(UIKit)
+    @Environment(\.richTextNativeScrollViewport) private var nativeScrollViewport
+    #endif
     
     /// Creates an instance with the given closure to build text content.
     ///
@@ -77,7 +80,8 @@ public struct TextView: View {
         #if canImport(AppKit)
         _TextView_AppKit(content: content)
         #elseif canImport(UIKit)
-        _TextView_UIKit(content: content)
+        _TextView_UIKit(content: content, nativeScrollViewport: nativeScrollViewport)
+            .environment(\.richTextNativeScrollViewport, nil)
         #else
         ContentUnavailableView(
             "Content Not Available",

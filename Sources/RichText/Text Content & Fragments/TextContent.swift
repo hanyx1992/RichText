@@ -77,22 +77,16 @@ public struct TextContent {
         )
     }
 
-    func attributedString(configuration: TextViewRenderConfiguration) -> AttributedString {
-        var attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
+    func attributedString(configuration: TextViewRenderConfiguration,
+                          reuseConvertedAttributes: Bool = false) -> AttributedString {
+        let attributedString = fragments.reduce(into: AttributedString()) { result, fragment in
             result += fragment.asAttributedString()
         }
         
-        attributedString = TextAttributeConverter.mergingEnvironmentValuesIntoAttributedString(
-            attributedString,
-            configuration: configuration
+        return TextAttributeConverter.convertingAttributes(
+            in: attributedString,
+            configuration: configuration,
+            reuseConvertedAttributes: reuseConvertedAttributes
         )
-        attributedString = TextAttributeConverter.convertingAndMergingSwiftUIAttributesIntoAttributedString(
-            attributedString,
-            configuration: configuration
-        )
-        
-        attributedString = TextAttributeConverter.resolveInlinePresentationIntent(in: attributedString)
-        
-        return attributedString
     }
 }

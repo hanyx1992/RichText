@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-struct TextViewRenderConfiguration {
-    struct LineHeightSetting {
+struct TextViewRenderConfiguration: Equatable {
+    struct LineHeightSetting: Equatable {
         var minimum: CGFloat
         var maximum: CGFloat
         var multiple: CGFloat
@@ -19,6 +19,7 @@ struct TextViewRenderConfiguration {
     var multilineTextAlignment: TextAlignment
     var layoutDirection: LayoutDirection
     var lineSpacing: CGFloat
+    var minimumLineHeight: CGFloat
     var allowsTightening: Bool
     var lineLimit: Int?
     var truncationMode: Text.TruncationMode
@@ -37,6 +38,7 @@ struct TextViewRenderConfiguration {
         multilineTextAlignment = environmentValues.multilineTextAlignment
         layoutDirection = environmentValues.layoutDirection
         lineSpacing = environmentValues.lineSpacing
+        minimumLineHeight = environmentValues.richTextMinimumLineHeight
         allowsTightening = environmentValues.allowsTightening
         lineLimit = environmentValues.lineLimit
         truncationMode = environmentValues.truncationMode

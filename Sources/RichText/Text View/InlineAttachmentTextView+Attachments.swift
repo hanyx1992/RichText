@@ -10,6 +10,13 @@ import SwiftUI
 extension InlineAttachmentTextView {
     func updateInlineAttachmentViews() {
         var visibleAttachmentViews = Set<ObjectIdentifier>()
+        #if canImport(UIKit)
+        if nativeScrollViewport != nil {
+            updateNativeViewportAttachmentViews(visibleAttachmentViews: &visibleAttachmentViews)
+            retainNativeViewportAttachmentViews(visibleAttachmentViews)
+            return
+        }
+        #endif
         
         if let textLayoutManager {
             // TK2 path: place attachment views from text layout fragments.
@@ -27,6 +34,10 @@ extension InlineAttachmentTextView {
             )
         }
         
+        removeInvisibleAttachmentViews(visibleAttachmentViews)
+    }
+
+    private func removeInvisibleAttachmentViews(_ visibleAttachmentViews: Set<ObjectIdentifier>) {
         for (attachmentViewID, attachmentView) in inlineAttachmentViews {
             guard !visibleAttachmentViews.contains(attachmentViewID) else { continue }
             
@@ -64,9 +75,63 @@ extension InlineAttachmentTextView {
             
             inlineAttachmentsByID[attachment.id] = attachment
             inlineAttachmentRangesByID[attachment.id] = range
+            #if canImport(UIKit)
+            if nativeScrollViewport != nil {
+                MainActor.assumeIsolated { attachment.attachmentsHostingTextView = self }
+            }
+            #endif
         }
     }
 }
+
+#if canImport(UIKit)
+extension InlineAttachmentTextView {
+    private func retainNativeViewportAttachmentViews(_ visible: Set<ObjectIdentifier>) {
+        for (viewID, view) in inlineAttachmentViews {
+            if let attachmentID = viewportAttachmentIDs[viewID],
+               inlineAttachmentsByID[attachmentID] != nil {
+                // Leaving the viewport must not trigger SwiftUI onDisappear
+                // and stop media in an article that is still being read.
+                view.isHidden = !visible.contains(viewID)
+            } else {
+                view.removeFromSuperview()
+                inlineAttachmentViews[viewID] = nil
+                viewportAttachmentIDs[viewID] = nil
+            }
+        }
+    }
+
+    private func updateNativeViewportAttachmentViews(visibleAttachmentViews: inout Set<ObjectIdentifier>) {
+        guard bounds.width > 0, bounds.height > 0,
+              let manager = _layoutManager, let container = _textContainer,
+              let storage = manager.textStorage else { return }
+        // bounds.origin is contentOffset. Convert once to text-container coordinates.
+        let visibleRect = bounds.offsetBy(dx: -textContainerOffset.x, dy: -textContainerOffset.y)
+        // TK1 may lay out the prefix needed to reach this rectangle, but this does not
+        // explicitly ensure the whole document or enumerate offscreen attachments.
+        let glyphs = manager.glyphRange(forBoundingRect: visibleRect, in: container)
+        guard glyphs.location != NSNotFound, glyphs.length > 0 else { return }
+        let characters = manager.characterRange(forGlyphRange: glyphs, actualGlyphRange: nil)
+        let range = NSIntersectionRange(characters, NSRange(location: 0, length: storage.length))
+        storage.enumerateAttribute(.attachment, in: range) { value, range, _ in
+            guard let attachment = value as? InlineHostingAttachment else { return }
+            let attachmentGlyphs = manager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            let frame = manager.boundingRect(forGlyphRange: attachmentGlyphs, in: container)
+            guard !frame.isEmpty, frame.intersects(visibleRect) else { return }
+            let view = MainActor.assumeIsolated {
+                attachment.attachmentsHostingTextView = self
+                return attachment.hostingView
+            }
+            view.frame = frame.offsetBy(dx: textContainerOffset.x, dy: textContainerOffset.y)
+            if view.superview !== self { addSubview(view) }
+            let identifier = ObjectIdentifier(view)
+            visibleAttachmentViews.insert(identifier)
+            inlineAttachmentViews[identifier] = view
+            viewportAttachmentIDs[identifier] = attachment.id
+        }
+    }
+}
+#endif
 
 // MARK: - TextKit 2
 

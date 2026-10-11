@@ -40,6 +40,10 @@ extension InlineAttachmentTextView {
     
     func _invalidateTextLayout() {
         cachedContentHeight = nil
+        #if canImport(UIKit)
+        cachedFittingSize = nil
+        textLayoutRevision &+= 1
+        #endif
         invalidateIntrinsicContentSize()
 
         #if canImport(AppKit)
