@@ -8,6 +8,7 @@
 import SwiftUI
 
 final class InlineAttachmentTextView: PlatformTextView {
+    var selectionAction: RichTextSelectionAction?
     var inlineAttachmentViews: [ObjectIdentifier: PlatformView] = [:]
     var inlineAttachmentsByID: [AnyHashable: InlineHostingAttachment] = [:]
     var inlineAttachmentRangesByID: [AnyHashable: NSRange] = [:]

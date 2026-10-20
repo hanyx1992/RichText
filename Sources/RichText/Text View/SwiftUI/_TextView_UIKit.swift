@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct _TextView_UIKit: UIViewRepresentable {
+    @Environment(\.richTextSelectionAction) private var selectionAction
     var content: TextContent
     var nativeScrollViewport: RichTextNativeScrollViewport?
     
@@ -38,6 +39,7 @@ struct _TextView_UIKit: UIViewRepresentable {
     func updateUIView(_ textView: InlineAttachmentTextView, context: Context) {
         let position = textView.pendingViewportOffset ?? textView.contentOffset
         context.coordinator.parent = self
+        textView.selectionAction = selectionAction
         textView.updateNativeScrollViewport(nativeScrollViewport)
         if nativeScrollViewport != nil {
             textView.isScrollEnabled = context.environment.isEnabled
@@ -126,6 +128,15 @@ struct _TextView_UIKit: UIViewRepresentable {
             }
         }
         
+        func textView(_ textView: UITextView, editMenuForTextIn range: NSRange,
+                      suggestedActions: [UIMenuElement]) -> UIMenu? {
+            guard let view = textView as? InlineAttachmentTextView,
+                  let action = view.selectionAction,
+                  let selection = view.selectionSnapshot(in: range) else { return nil }
+            let item = UIAction(title: action.title) { _ in action.perform(selection) }
+            return UIMenu(children: suggestedActions + [item])
+        }
+
         func textDraggableView(
             _ textDraggableView: UIView & UITextDraggable,
             itemsForDrag dragRequest: UITextDragRequest

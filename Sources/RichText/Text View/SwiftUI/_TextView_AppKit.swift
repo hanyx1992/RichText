@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct _TextView_AppKit: NSViewRepresentable {
+    @Environment(\.richTextSelectionAction) private var selectionAction
     var content: TextContent
     
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -40,6 +41,7 @@ struct _TextView_AppKit: NSViewRepresentable {
     
     func updateNSView(_ textView: InlineAttachmentTextView, context: Context) {
         context.coordinator.parent = self
+        textView.selectionAction = selectionAction
 
         let configuration = TextViewRenderConfiguration(context: context)
         TextAttributeConverter.mergeRenderConfigurationIntoTextView(

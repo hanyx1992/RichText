@@ -11,6 +11,22 @@ import AppKit
 
 extension InlineAttachmentTextView {
     
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let menu = super.menu(for: event) else { return nil }
+        if let action = selectionAction, selectionSnapshot(in: selectedRange()) != nil {
+            menu.addItem(.separator())
+            let item = NSMenuItem(title: action.title, action: #selector(performSelectionAction(_:)), keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+        }
+        return menu
+    }
+
+    @objc private func performSelectionAction(_ sender: Any?) {
+        guard let selection = selectionSnapshot(in: selectedRange()) else { return }
+        selectionAction?.perform(selection)
+    }
+
     var textContainerOffset: CGPoint {
         textContainerOrigin
     }

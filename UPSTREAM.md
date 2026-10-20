@@ -2,7 +2,7 @@
 
 上游：[LiYanan2004/RichText](https://github.com/LiYanan2004/RichText)。维护 fork：[hanyx1992/RichText](https://github.com/hanyx1992/RichText)，在 `main` 维护定制，以 `upstream` remote 跟踪原库。起点 `a2fb191988f6f2ce60574962c96a0e1846c36dae`，保留完整上游历史、示例与 LICENSE。
 
-保留的定制：最低行高环境入口与段落合并；属性一次遍历、重复提交与有效测高复用；可选 iOS 原生滚动视口、显式安全区留白、独立头部、可见附件定位、页内位置恢复和明确版本／配置未变时的早停；本次转换内属性复用。已见附件离屏隐藏并保留宿主，实际移除才销毁；原生视口头部与附件的 hosting 不重复加入安全区；嵌套正文不继承根视口，附件 run 不复用属性，不增加跨调用缓存。
+保留的定制：最低行高环境入口与段落合并；属性一次遍历、重复提交与有效测高复用；可选 iOS 原生滚动视口、显式安全区留白、独立头部、可见附件定位、页内位置恢复和明确版本／配置未变时的早停；本次转换内属性复用；原生选区菜单动作与按原始范围生成的附件等效文字快照。已见附件离屏隐藏并保留宿主，实际移除才销毁；原生视口头部与附件的 hosting 不重复加入安全区；嵌套正文不继承根视口，附件 run 不复用属性，不增加跨调用缓存。
 
 Limenia 在 `Vendor/RichText` 以 Git submodule 固定已验证 commit；本地同 identity 根依赖覆盖 MarkdownView 3.0.0 的间接 RichText。正常检出执行 `git submodule update --init --recursive`，不自动追踪分支更新。应用侧解析与离线资源改写留在 Limenia。
 
