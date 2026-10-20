@@ -14,10 +14,9 @@ extension InlineAttachmentTextView {
     override func menu(for event: NSEvent) -> NSMenu? {
         guard let menu = super.menu(for: event) else { return nil }
         if let action = selectionAction, selectionSnapshot(in: selectedRange()) != nil {
-            menu.addItem(.separator())
             let item = NSMenuItem(title: action.title, action: #selector(performSelectionAction(_:)), keyEquivalent: "")
             item.target = self
-            menu.addItem(item)
+            menu.insertItem(item, at: 0)
         }
         return menu
     }

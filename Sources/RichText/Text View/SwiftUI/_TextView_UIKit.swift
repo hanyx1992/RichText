@@ -134,7 +134,7 @@ struct _TextView_UIKit: UIViewRepresentable {
                   let action = view.selectionAction,
                   let selection = view.selectionSnapshot(in: range) else { return nil }
             let item = UIAction(title: action.title) { _ in action.perform(selection) }
-            return UIMenu(children: suggestedActions + [item])
+            return UIMenu(children: [item] + suggestedActions)
         }
 
         func textDraggableView(
