@@ -32,13 +32,13 @@ final public class InlineHostingAttachment: NSTextAttachment {
     @MainActor
     weak var attachmentsHostingTextView: InlineAttachmentTextView? {
         didSet {
-            #if canImport(UIKit)
             if oldValue !== attachmentsHostingTextView {
                 // A reused attachment must not carry the previous viewport's hidden state.
                 hostingController?.view.isHidden = false
+                #if canImport(UIKit)
                 updateHostingSafeArea()
+                #endif
             }
-            #endif
         }
     }
     
@@ -163,14 +163,13 @@ final public class InlineHostingAttachment: NSTextAttachment {
     }
     
     var ascender: CGFloat?
+    @MainActor private var measuredLayout: (lineFragmentWidth: CGFloat, size: CGSize)?
     
     @MainActor
     private var hostingRootView: AnyView {
         AnyView(
             self.rootView
-                #if canImport(UIKit)
                 .environment(\.richTextNativeScrollViewport, nil)
-                #endif
                 .ignoresSafeArea() // Resolves TextKit 1 bug. Make sure to recalculate attachment sizes after the iOS screen size changes.
                 .onGeometryChange(for: CGSize.self, of: \.size) { [weak self] _ in
                     self?.hostedViewSizeDidChange()
@@ -270,14 +269,24 @@ final public class InlineHostingAttachment: NSTextAttachment {
             y: -baselineDescentRatio * attachmentSize.height
         )
 
+        measuredLayout = (lineFragmentWidth, attachmentSize)
         ascender = attachmentSize.height + origin.y
         return CGRect(origin: origin, size: attachmentSize)
     }
 
     @MainActor
+    func hostedSizeRequiresTextLayout() -> Bool {
+        guard let measuredLayout else { return true }
+        // Reuse the width and sizing rule of the last TextKit bounds request.
+        // A mounted frame alone cannot reveal a SwiftUI view's desired height.
+        return sizeThatFits(lineFragmentWidth: measuredLayout.lineFragmentWidth,
+                            intrinsicContentSize: hostingView.intrinsicContentSize) != measuredLayout.size
+    }
+
+    @MainActor
     private func hostedViewSizeDidChange() {
         guard let attachmentsHostingTextView else { return }
-        guard !isMeasuringAttachmentBounds else { return }
+        guard !isMeasuringAttachmentBounds, hostedSizeRequiresTextLayout() else { return }
 
         scheduleTextLayoutInvalidation(textView: attachmentsHostingTextView)
     }
@@ -292,6 +301,8 @@ final public class InlineHostingAttachment: NSTextAttachment {
 
             MainActor.assumeIsolated {
                 self.isTextLayoutInvalidationScheduled = false
+                guard self.attachmentsHostingTextView === textView,
+                      self.hostedSizeRequiresTextLayout() else { return }
                 textView?.invalidateTextLayout(for: self)
             }
         }

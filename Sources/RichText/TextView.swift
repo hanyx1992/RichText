@@ -65,9 +65,7 @@ public struct TextView: View {
     public var content: TextContent
     
     @Environment(\.fontResolutionContext) private var fontResolutionContext
-    #if canImport(UIKit)
     @Environment(\.richTextNativeScrollViewport) private var nativeScrollViewport
-    #endif
     
     /// Creates an instance with the given closure to build text content.
     ///
@@ -78,7 +76,9 @@ public struct TextView: View {
     
     public var body: some View {
         #if canImport(AppKit)
-        _TextView_AppKit(content: content)
+        _TextView_AppKit(content: content, nativeScrollViewport: nativeScrollViewport)
+            .id(nativeScrollViewport != nil)
+            .environment(\.richTextNativeScrollViewport, nil)
         #elseif canImport(UIKit)
         _TextView_UIKit(content: content, nativeScrollViewport: nativeScrollViewport)
             // Switching scroll modes starts a new native view and coordinator.

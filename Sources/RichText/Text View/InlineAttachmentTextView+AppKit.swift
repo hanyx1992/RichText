@@ -30,18 +30,54 @@ extension InlineAttachmentTextView {
         textContainerOrigin
     }
     
+    override func setConstrainedFrameSize(_ desiredSize: NSSize) {
+        guard nativeScrollViewport != nil else {
+            super.setConstrainedFrameSize(desiredSize)
+            return
+        }
+        // NSTextView adds its symmetric inset while resizing. The header is an
+        // asymmetric origin, so account for just the extra top space here.
+        let extraTop = max(0, viewportHeaderHeight - textContainerInset.height)
+        super.setConstrainedFrameSize(NSSize(width: desiredSize.width,
+                                            height: desiredSize.height + extraTop))
+    }
+
+    override var textContainerOrigin: NSPoint {
+        let origin = super.textContainerOrigin
+        return nativeScrollViewport == nil ? origin : NSPoint(x: origin.x, y: viewportHeaderHeight)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        pendingViewportOffset = nil
+        super.keyDown(with: event)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        pendingViewportOffset = nil
+        super.scrollWheel(with: event)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        pendingViewportOffset = nil
+        super.mouseDown(with: event)
+    }
+
     override func layout() {
+        guard !isDismantled else { return }
+        layoutNativeScrollHeader()
         super.layout()
         if let cachedContentHeightWidth,
            cachedContentHeightWidth != bounds.width {
             cachedContentHeight = nil
             invalidateIntrinsicContentSize()
         }
+        restoreNativeScrollPositionIfNeeded()
         updateInlineAttachmentViews()
     }
     
     override var intrinsicContentSize: CGSize {
-        CGSize(width: PlatformView.noIntrinsicMetric, height: _measuredContentHeight)
+        CGSize(width: PlatformView.noIntrinsicMetric,
+               height: nativeScrollViewport == nil ? _measuredContentHeight : PlatformView.noIntrinsicMetric)
     }
     
     private var _measuredContentHeight: CGFloat {

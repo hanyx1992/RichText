@@ -10,13 +10,11 @@ import SwiftUI
 extension InlineAttachmentTextView {
     func updateInlineAttachmentViews() {
         var visibleAttachmentViews = Set<ObjectIdentifier>()
-        #if canImport(UIKit)
         if nativeScrollViewport != nil {
             updateNativeViewportAttachmentViews(visibleAttachmentViews: &visibleAttachmentViews)
             retainNativeViewportAttachmentViews(visibleAttachmentViews)
             return
         }
-        #endif
         
         if let textLayoutManager {
             // TK2 path: place attachment views from text layout fragments.
@@ -75,15 +73,29 @@ extension InlineAttachmentTextView {
             
             inlineAttachmentsByID[attachment.id] = attachment
             inlineAttachmentRangesByID[attachment.id] = range
-            #if canImport(UIKit)
             MainActor.assumeIsolated { attachment.attachmentsHostingTextView = self }
-            #endif
         }
     }
 }
 
-#if canImport(UIKit)
 extension InlineAttachmentTextView {
+    func settleNativeViewportAttachmentLayout() -> Bool {
+        var changed = false
+        for (viewID, view) in inlineAttachmentViews where !view.isHidden {
+            guard let id = viewportAttachmentIDs[viewID], let attachment = inlineAttachmentsByID[id] else { continue }
+            #if canImport(AppKit)
+            view.layoutSubtreeIfNeeded()
+            #else
+            view.layoutIfNeeded()
+            #endif
+            if MainActor.assumeIsolated({ attachment.hostedSizeRequiresTextLayout() }) {
+                invalidateTextLayout(for: attachment)
+                changed = true
+            }
+        }
+        return changed
+    }
+
     private func retainNativeViewportAttachmentViews(_ visible: Set<ObjectIdentifier>) {
         for (viewID, view) in inlineAttachmentViews {
             if let attachmentID = viewportAttachmentIDs[viewID],
@@ -104,7 +116,7 @@ extension InlineAttachmentTextView {
               let manager = _layoutManager, let container = _textContainer,
               let storage = manager.textStorage else { return }
         // bounds.origin is contentOffset. Convert once to text-container coordinates.
-        let visibleRect = bounds.offsetBy(dx: -textContainerOffset.x, dy: -textContainerOffset.y)
+        let visibleRect = nativeViewportRect.offsetBy(dx: -textContainerOffset.x, dy: -textContainerOffset.y)
         // TK1 may lay out the prefix needed to reach this rectangle, but this does not
         // explicitly ensure the whole document or enumerate offscreen attachments.
         let glyphs = manager.glyphRange(forBoundingRect: visibleRect, in: container)
@@ -129,7 +141,6 @@ extension InlineAttachmentTextView {
         }
     }
 }
-#endif
 
 // MARK: - TextKit 2
 

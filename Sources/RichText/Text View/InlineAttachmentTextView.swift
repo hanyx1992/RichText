@@ -16,17 +16,22 @@ final class InlineAttachmentTextView: PlatformTextView {
     var cachedContentHeightWidth: CGFloat?
     // TextKit may normalize storage attributes; compare subsequent submissions to our input.
     private var lastAppliedAttributedString: NSAttributedString?
-    #if canImport(UIKit)
     var isDismantled = false
-    var cachedFittingSize: (proposal: CGSize, containerSize: CGSize, boundsWidth: CGFloat, size: CGSize)?
-    var textLayoutRevision: UInt = 0
     var nativeScrollViewport: RichTextNativeScrollViewport?
     var viewportAttachmentIDs: [ObjectIdentifier: AnyHashable] = [:]
-    var viewportHeader: UIHostingController<AnyView>?
+    var pendingViewportOffset: CGPoint?
     var viewportHeaderSize: CGSize = .zero
     var viewportHeaderNeedsMeasurement = true
     var viewportHeaderWidth: CGFloat?
-    var pendingViewportOffset: CGPoint?
+    #if canImport(AppKit)
+    var viewportHeader: NSHostingController<AnyView>?
+    var viewportHeaderHeight: CGFloat = 0
+    var viewportBoundsObserver: NSObjectProtocol?
+    #endif
+    #if canImport(UIKit)
+    var cachedFittingSize: (proposal: CGSize, containerSize: CGSize, boundsWidth: CGFloat, size: CGSize)?
+    var textLayoutRevision: UInt = 0
+    var viewportHeader: UIHostingController<AnyView>?
     override var contentSize: CGSize {
         didSet {
             if oldValue != contentSize, nativeScrollViewport != nil, pendingViewportOffset != nil {

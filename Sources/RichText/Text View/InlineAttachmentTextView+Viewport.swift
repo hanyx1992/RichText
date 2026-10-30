@@ -4,6 +4,7 @@ import SwiftUI
 extension InlineAttachmentTextView {
     func updateNativeScrollViewport(_ viewport: RichTextNativeScrollViewport?) {
         nativeScrollViewport = viewport
+        viewport?.position.textView = self
         isScrollEnabled = viewport != nil
         guard let viewport else { return }
 

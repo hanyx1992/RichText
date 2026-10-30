@@ -9,7 +9,8 @@ import SwiftUI
 
 extension InlineAttachmentTextView {
     func invalidateTextLayout(for attachment: InlineHostingAttachment) {
-        guard let attachmentRange = inlineAttachmentRangesByID[attachment.id] else {
+        guard inlineAttachmentsByID[attachment.id] === attachment,
+              let attachmentRange = inlineAttachmentRangesByID[attachment.id] else {
             return
         }
         
@@ -17,9 +18,7 @@ extension InlineAttachmentTextView {
     }
     
     func invalidateTextLayout(at range: NSRange) {
-        #if canImport(UIKit)
         guard !isDismantled else { return }
-        #endif
         if let textLayoutManager,
            let textContentManager = textLayoutManager.textContentManager,
            let textRange = NSTextRange(

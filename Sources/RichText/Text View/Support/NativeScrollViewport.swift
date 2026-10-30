@@ -1,4 +1,3 @@
-#if canImport(UIKit)
 import SwiftUI
 
 /// Page-local position; native scrolling does not invalidate SwiftUI.
@@ -8,6 +7,16 @@ import SwiftUI
 @MainActor
 public final class RichTextScrollPosition {
     public var offset: CGPoint = .zero
+
+    weak var textView: InlineAttachmentTextView?
+
+    /// Visible display-text UTF-16 range, without requesting full-document layout.
+    public func visibleTextRange() -> NSRange? { textView?.nativeVisibleTextRange() }
+
+    /// Synchronously lays out and reveals a display-text range in the accepted document.
+    /// Returns false while unmounted or when the range is outside that document.
+    @discardableResult
+    public func scroll(to range: NSRange) -> Bool { textView?.scrollNativeTextRange(range) ?? false }
 
     public init() {}
 }
@@ -54,4 +63,3 @@ extension EnvironmentValues {
         set { self[NativeScrollViewportKey.self] = newValue }
     }
 }
-#endif
