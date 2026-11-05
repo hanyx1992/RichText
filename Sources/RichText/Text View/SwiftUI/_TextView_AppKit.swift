@@ -60,6 +60,14 @@ struct _TextView_AppKit: NSViewRepresentable {
             MainActor.assumeIsolated {
                 if let event = NSApp.currentEvent,
                    [.leftMouseDown, .leftMouseDragged, .scrollWheel, .keyDown].contains(event.type) {
+                    // Native text events are tracked by the text view itself.
+                    // Only an actual scroller action should grant control here;
+                    // a programmatic layout may run while an unrelated click is current.
+                    if let scroller = textView?.enclosingScrollView?.verticalScroller,
+                       scroller.window === event.window,
+                       scroller.bounds.contains(scroller.convert(event.locationInWindow, from: nil)) {
+                        textView?.nativeScrollViewport?.position.interactionSequence &+= 1
+                    }
                     textView?.pendingViewportOffset = nil
                 }
                 textView?.saveNativeScrollPosition()
@@ -94,6 +102,7 @@ struct _TextView_AppKit: NSViewRepresentable {
             content.attributedString(configuration: configuration,
                                      reuseConvertedAttributes: nativeScrollViewport != nil)
         ) {
+            nativeScrollViewport?.position.acceptedVersion = nativeScrollViewport?.contentVersion
             coordinator.contentVersion = nativeScrollViewport?.contentVersion
             coordinator.renderConfiguration = configuration
             coordinator.isEnabled = context.environment.isEnabled
@@ -109,6 +118,7 @@ struct _TextView_AppKit: NSViewRepresentable {
     static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
         guard let textView = coordinator.textView else { return }
         textView.saveNativeScrollPosition()
+        textView.nativeScrollViewport?.position.willDetach(textView)
         textView.isDismantled = true
         textView.delegate = nil
         if let observer = textView.viewportBoundsObserver { NotificationCenter.default.removeObserver(observer) }

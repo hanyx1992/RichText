@@ -5,6 +5,31 @@ import XCTest
 final class NativeViewportTests: XCTestCase {
     #if canImport(AppKit)
     @MainActor
+    func testReadingEndRequiresBottomOfTallFinalAttachment() async throws {
+        let position = RichTextScrollPosition()
+        let root = TextView {
+            "Introduction\n"
+            InlineView("Tall final block") { Color.blue.frame(width: 250, height: 1200) }
+        }
+        .richTextNativeScrollViewport(RichTextNativeScrollViewport(
+            header: Text("Header"), columnWidth: 350, padding: 12, headerSpacing: 8, position: position))
+        let host = NSHostingView(rootView: root)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+        try await Task.sleep(for: .milliseconds(100))
+        host.layoutSubtreeIfNeeded()
+        let view = try XCTUnwrap(position.textView)
+        let final = NSRange(location: view.string.utf16.count - 1, length: 1)
+        XCTAssertTrue(position.scroll(to: final))
+        XCTAssertFalse(try XCTUnwrap(position.readingLocation()).atEnd)
+        XCTAssertTrue(position.scrollToReadingEnd())
+        XCTAssertTrue(try XCTUnwrap(position.readingLocation()).atEnd)
+    }
+
+    @MainActor
     func testNativeHeaderTailGeometryAndVisibleRange() async throws {
         let position = RichTextScrollPosition()
         let text = String(repeating: "A long mixed 中文 paragraph with enough words to wrap to another line.\n", count: 3000)

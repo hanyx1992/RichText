@@ -66,6 +66,7 @@ struct _TextView_UIKit: UIViewRepresentable {
             content.attributedString(configuration: configuration,
                                      reuseConvertedAttributes: nativeScrollViewport != nil)
         ) {
+            nativeScrollViewport?.position.acceptedVersion = nativeScrollViewport?.contentVersion
             coordinator.contentVersion = nativeScrollViewport?.contentVersion
             coordinator.renderConfiguration = configuration
             coordinator.isEnabled = context.environment.isEnabled
@@ -113,10 +114,12 @@ struct _TextView_UIKit: UIViewRepresentable {
         }
 
         func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+            textView?.nativeScrollViewport?.position.interactionSequence &+= 1
             textView?.finishNativeScrollRestoration()
         }
 
         func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
+            textView?.nativeScrollViewport?.position.interactionSequence &+= 1
             textView?.finishNativeScrollRestoration()
             textView?.prepareNativeScrollLayout(in: CGRect(origin: .zero, size: scrollView.bounds.size))
             return true
@@ -124,6 +127,7 @@ struct _TextView_UIKit: UIViewRepresentable {
 
         func textViewDidChangeSelection(_ textView: UITextView) {
             if textView.selectedRange.length > 0 {
+                self.textView?.nativeScrollViewport?.position.interactionSequence &+= 1
                 self.textView?.finishNativeScrollRestoration()
             }
         }
@@ -154,6 +158,7 @@ struct _TextView_UIKit: UIViewRepresentable {
     }
 
     static func dismantleUIView(_ uiView: InlineAttachmentTextView, coordinator: Coordinator) {
+        uiView.nativeScrollViewport?.position.willDetach(uiView)
         uiView.isDismantled = true
         uiView.saveNativeScrollPosition()
         uiView.delegate = nil

@@ -8,6 +8,45 @@ import SwiftUI
 public final class RichTextScrollPosition {
     public var offset: CGPoint = .zero
 
+    /// Called once after an accepted content version has usable viewport geometry.
+    public internal(set) var interactionSequence: UInt = 0
+    var acceptedVersion: AnyHashable?
+    private var deliveredVersion: AnyHashable?
+    private var detachedLocation: (range: NSRange, atEnd: Bool)?
+
+    func didLayout(_ view: InlineAttachmentTextView) {
+        guard textView === view, let onAccepted = view.nativeScrollViewport?.onAccepted, let version = acceptedVersion,
+              view.nativeScrollViewport?.contentVersion == version, deliveredVersion != version,
+              view.window != nil, view.nativeViewportRect.height > 0,
+              let storage = view._layoutManager?.textStorage else { return }
+        deliveredVersion = version
+        // A Swift String is an immutable snapshot of the accepted display text.
+        onAccepted(version, storage.string)
+    }
+
+    public var hasAcceptedReadingContent: Bool {
+        guard let view = textView, view.window != nil, !view.isDismantled, let version = acceptedVersion else { return false }
+        return view.nativeScrollViewport?.contentVersion == version && deliveredVersion == version
+    }
+
+    public func readingLocation() -> (range: NSRange, atEnd: Bool)? {
+        guard let view = textView, !view.isDismantled else { return detachedLocation }
+        return view.nativeReadingLocation()
+    }
+
+    func willDetach(_ view: InlineAttachmentTextView) {
+        guard textView === view else { return }
+        detachedLocation = view.nativeReadingLocation()
+        deliveredVersion = nil
+        acceptedVersion = nil
+    }
+
+    public func scrollToReadingEnd() -> Bool {
+        guard let view = textView, let length = view._layoutManager?.textStorage?.length, length > 0 else { return false }
+        return view.scrollNativeTextRange(NSRange(location: length - 1, length: 1), alignBottom: true)
+            && view.nativeReadingLocation()?.atEnd == true
+    }
+
     weak var textView: InlineAttachmentTextView?
 
     /// Visible display-text UTF-16 range, without requesting full-document layout.
@@ -25,6 +64,7 @@ public final class RichTextScrollPosition {
 public struct RichTextNativeScrollViewport {
     /// Advance whenever the root content or hosted attachment rendering changes.
     /// Nil keeps the normal conversion path on every update.
+    public var onAccepted: ((AnyHashable, String) -> Void)?
     public var contentVersion: AnyHashable?
     var header: AnyView
     var columnWidth: CGFloat

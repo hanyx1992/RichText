@@ -56,6 +56,7 @@ extension InlineAttachmentTextView {
         if nativeScrollViewport == nil { invalidateIntrinsicContentSize() }
         restoreNativeScrollPositionIfNeeded()
         updateInlineAttachmentViews()
+        nativeScrollViewport?.position.didLayout(self)
         if let header = viewportHeader?.view { bringSubviewToFront(header) }
     }
 
@@ -80,6 +81,7 @@ extension InlineAttachmentTextView {
     }
 
     override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
+        nativeScrollViewport?.position.interactionSequence &+= 1
         finishNativeScrollRestoration()
         return super.accessibilityScroll(direction)
     }

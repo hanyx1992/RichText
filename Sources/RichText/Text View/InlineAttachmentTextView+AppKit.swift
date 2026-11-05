@@ -48,16 +48,19 @@ extension InlineAttachmentTextView {
     }
 
     override func keyDown(with event: NSEvent) {
+        nativeScrollViewport?.position.interactionSequence &+= 1
         pendingViewportOffset = nil
         super.keyDown(with: event)
     }
 
     override func scrollWheel(with event: NSEvent) {
+        nativeScrollViewport?.position.interactionSequence &+= 1
         pendingViewportOffset = nil
         super.scrollWheel(with: event)
     }
 
     override func mouseDown(with event: NSEvent) {
+        nativeScrollViewport?.position.interactionSequence &+= 1
         pendingViewportOffset = nil
         super.mouseDown(with: event)
     }
@@ -73,6 +76,7 @@ extension InlineAttachmentTextView {
         }
         restoreNativeScrollPositionIfNeeded()
         updateInlineAttachmentViews()
+        nativeScrollViewport?.position.didLayout(self)
     }
     
     override var intrinsicContentSize: CGSize {
