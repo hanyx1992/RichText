@@ -41,6 +41,10 @@ public final class RichTextScrollPosition {
         acceptedVersion = nil
     }
 
+    /// Reveals the entire page header before the first reading block.
+    @discardableResult
+    public func scrollToPageStart() -> Bool { textView?.scrollNativePageStart() ?? false }
+
     public func scrollToReadingEnd() -> Bool {
         guard let view = textView, let length = view._layoutManager?.textStorage?.length, length > 0 else { return false }
         return view.scrollNativeTextRange(NSRange(location: length - 1, length: 1), alignBottom: true)

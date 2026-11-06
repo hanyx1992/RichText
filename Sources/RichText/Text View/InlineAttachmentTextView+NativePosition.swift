@@ -48,6 +48,27 @@ extension InlineAttachmentTextView {
         return (visible, bottom <= nativeViewportRect.maxY - (nativeScrollViewport?.safeAreaInsets.bottom ?? 0) + 1)
     }
 
+    func scrollNativePageStart() -> Bool {
+        guard nativeScrollViewport != nil, !isDismantled, window != nil,
+              nativeViewportRect.height > 0, let manager = _layoutManager,
+              let container = _textContainer, (manager.textStorage?.length ?? 0) > 0 else { return false }
+        pendingViewportOffset = nil
+        // Only prepare the first viewport. A page-start target needs no full-text
+        // geometry and must include the header above the text container origin.
+        manager.ensureLayout(forBoundingRect: CGRect(origin: .zero, size: nativeViewportRect.size), in: container)
+        #if canImport(AppKit)
+        layoutSubtreeIfNeeded()
+        scrollToNativeOffset(.zero)
+        #else
+        layoutIfNeeded()
+        setContentOffset(.zero, animated: false)
+        layoutIfNeeded()
+        #endif
+        updateInlineAttachmentViews()
+        saveNativeScrollPosition()
+        return abs(nativeViewportRect.minY) < 1
+    }
+
     func scrollNativeTextRange(_ range: NSRange, alignBottom: Bool = false) -> Bool {
         guard nativeScrollViewport != nil, !isDismantled,
               let manager = _layoutManager, let container = _textContainer,

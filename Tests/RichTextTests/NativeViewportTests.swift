@@ -3,6 +3,53 @@ import XCTest
 @testable import RichText
 
 final class NativeViewportTests: XCTestCase {
+    @MainActor
+    func testPageStartRevealsHeaderAndCancelsPendingOffset() async throws {
+        let position = RichTextScrollPosition()
+        let root = TextView(String(repeating: "Reading paragraph with enough words to wrap.\n", count: 400))
+            .richTextNativeScrollViewport(RichTextNativeScrollViewport(
+                header: VStack { Text("Article title"); Text("https://example.com/article") }.frame(height: 120),
+                columnWidth: 350, padding: 20, headerSpacing: 16, position: position,
+                safeAreaInsets: EdgeInsets(top: 30, leading: 0, bottom: 20, trailing: 0)))
+        #if canImport(AppKit)
+        let host = NSHostingView(rootView: root)
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = host
+        window.orderFront(nil)
+        defer { window.orderOut(nil) }
+        #else
+        let host = UIHostingController(rootView: root)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        window.rootViewController = host
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true }
+        #endif
+        try await Task.sleep(for: .milliseconds(150))
+        let view = try XCTUnwrap(position.textView)
+        XCTAssertTrue(position.scroll(to: NSRange(location: 0, length: 1)))
+        XCTAssertGreaterThan(view.nativeViewportRect.minY, 100, "A text anchor hides the page header.")
+        let oldOffset = view.nativeViewportRect.origin
+        view.pendingViewportOffset = oldOffset
+        XCTAssertTrue(position.scrollToPageStart())
+        XCTAssertNil(view.pendingViewportOffset)
+        XCTAssertEqual(position.offset.y, 0, accuracy: 0.5)
+        let header = try XCTUnwrap(view.viewportHeader?.view.frame)
+        XCTAssertTrue(view.nativeViewportRect.contains(header))
+        print("PAGE_START previousTextOffset=\(oldOffset) header=\(header) viewport=\(view.nativeViewportRect) saved=\(position.offset) pending=\(String(describing: view.pendingViewportOffset))")
+        for _ in 0..<3 {
+            try await Task.sleep(for: .milliseconds(50))
+            #if canImport(AppKit)
+            host.layoutSubtreeIfNeeded()
+            #else
+            host.view.layoutIfNeeded()
+            #endif
+            XCTAssertEqual(view.nativeViewportRect.minY, 0, accuracy: 0.5)
+            XCTAssertEqual(position.offset.y, 0, accuracy: 0.5)
+            XCTAssertNil(view.pendingViewportOffset)
+        }
+    }
+
     #if canImport(AppKit)
     @MainActor
     func testReadingEndRequiresBottomOfTallFinalAttachment() async throws {
